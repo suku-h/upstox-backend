@@ -1,4 +1,5 @@
 import * as uid from 'uid-gen'
+import CommonResponse from '../pojos/commonresponse'
 import Customer from '../pojos/customer'
 import CustomerModel from '../models/customer'
 import {
@@ -7,9 +8,9 @@ import {
   checkValidEmail,
   returnError
   } from '../utils/http'
+import { checkNotFound, unauthorised } from '../utils/http'
 import { isEmptyString, isNotNull, isNull } from '../utils/util'
 import { Request, Response, Router } from 'express'
-import { unauthorised } from '../utils/http'
 
 class CustomerRouter {
   public router: Router
@@ -22,7 +23,7 @@ class CustomerRouter {
     this.routes()
   }
 
-  async getCustomer(req: Request, res: Response) {
+  async getCustomerById(req: Request, res: Response) {
     try {
       let customerId = req.query.customer_id
 
@@ -39,7 +40,7 @@ class CustomerRouter {
     }
   }
 
-  async createCustomer(req: Request, res: Response) {
+  async addCustomer(req: Request, res: Response) {
     try {
       let email = req.body.email
       let referralId = req.body.referral_id
@@ -70,12 +71,7 @@ class CustomerRouter {
       const newCustomer = await CustomerModel.create(customer)
 
       if (isNotNull(referrer)) {
-        const joiningFees = 100
-        let payback = 0.3 * joiningFees
-        if (referrer.isAmbassador) {
-          payback += 0.1 * joiningFees
-        }
-
+        const payback = Customer.getPayback(referrer)
         await CustomerModel.update({ _id: referrer._id }, { $inc: { payback } })
       }
 
@@ -85,10 +81,42 @@ class CustomerRouter {
     }
   }
 
+  async addReferral(req: Request, res: Response) {
+    try {
+      let customerId = req.body.customer_id
+      let referralId = req.body.referral_id
+
+      let customer = await CustomerModel.findOne({ customer_id: customerId }).select('_id, referral_id')
+
+      let logMessage = 'customer not found for id ' + customerId
+      checkNotFound(customer, 'Customer', logMessage)
+
+      if (isNotNull(customer.referral_id)) {
+        console.log('customer ', customerId, ' has already been referred by ', customer.referral_id)
+        throw unauthorised('Customer already has a referral')
+      }
+
+      let referrer = await CustomerModel.findOne({ customer_id: referralId }).select('_id, isAmbassador')
+
+      logMessage = 'referrer not found for id ' + referralId
+      checkNotFound(referrer, 'Referrer', logMessage)
+
+      await CustomerModel.update({ _id: customer._id }, { $set: { referral_id: referralId } })
+
+      let payback = Customer.getPayback(referrer)
+      await CustomerModel.update({ _id: referrer._id }, { $inc: { payback } })
+
+      res.json(CommonResponse.getSuccess())
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
 
   routes() {
-    this.router.get('/', (req, res) => this.getCustomer(req, res))
-    this.router.post('/', (req, res) => this.createCustomer(req, res))
+    this.router.get('/', (req, res) => this.getCustomerById(req, res))
+    this.router.post('/', (req, res) => this.addCustomer(req, res))
+    this.router.put('/referral', (req, res) => this.addReferral(req, res))
   }
 }
 
