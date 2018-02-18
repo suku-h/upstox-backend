@@ -125,11 +125,38 @@ class CustomerRouter {
     }
   }
 
+  async addAmbassador(req: Request, res: Response) {
+    try {
+      let email = req.body.email
+
+      checkValidEmail(email)
+
+      let existingCustomer = await CustomerModel.findOne({ email }).select('_id')
+      if (isNotNull(existingCustomer)) {
+        console.log('customer already exists', email)
+        throw unauthorised('Customer already exists')
+      }
+
+      let customer = new CustomerModel({
+        customer_id: this.idgen.simple(12),
+        email: email,
+        isAmbassador: true
+      })
+
+      const ambassador = await CustomerModel.create(customer)
+
+      res.json(ambassador)
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
   routes() {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
     this.router.put('/referral', (req, res) => this.addReferral(req, res))
     this.router.get('/children/all', (req, res) => this.fetchAllChildren(req, res))
+    this.router.post('/ambassador', (req, res) => this.addAmbassador(req, res))
   }
 }
 
