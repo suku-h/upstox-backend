@@ -42,7 +42,7 @@ export function checkValidEmail(obj: any) {
 }
 
 export function checkEmptyString(obj: any, logMessage: string) {
-  if (!isEmptyString(obj)) {
+  if (isEmptyString(obj)) {
     console.log(logMessage)
     throw badRequest(INVALID_REQUEST)
   }

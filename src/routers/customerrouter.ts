@@ -4,11 +4,12 @@ import Customer from '../pojos/customer'
 import CustomerModel from '../models/customer'
 import {
   checkBadRequest,
+  checkEmptyString,
   checkNotFound,
   checkValidEmail,
-  returnError
+  returnError,
+  unauthorised
   } from '../utils/http'
-import { checkNotFound, unauthorised } from '../utils/http'
 import { isEmptyString, isNotNull, isNull } from '../utils/util'
 import { Request, Response, Router } from 'express'
 
@@ -64,8 +65,7 @@ class CustomerRouter {
       let customer = new CustomerModel({
         customer_id: this.idgen.simple(12),
         email: email,
-        referral_id: referralId,
-        isAmbassador: req.body.isAmbassador
+        referral_id: referralId
       })
 
       const newCustomer = await CustomerModel.create(customer)
@@ -112,11 +112,24 @@ class CustomerRouter {
     }
   }
 
+  async fetchAllChildren(req: Request, res: Response) {
+    try {
+      let customerId = req.query.customer_id
+
+      checkEmptyString(customerId, 'Blank customer id')
+
+      let customers = await CustomerModel.find({ referral_id: customerId })
+      res.json(customers)
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
 
   routes() {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
     this.router.put('/referral', (req, res) => this.addReferral(req, res))
+    this.router.get('/children/all', (req, res) => this.fetchAllChildren(req, res))
   }
 }
 
