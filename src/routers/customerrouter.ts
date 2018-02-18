@@ -43,6 +43,7 @@ class CustomerRouter {
     try {
       let email = req.body.email
       let referralId = req.body.referral_id
+      let referrer
 
       checkValidEmail(email)
 
@@ -53,7 +54,7 @@ class CustomerRouter {
       }
 
       if (!isEmptyString(referralId)) {
-        const referrer = await CustomerModel.findOne({ customer_id: referralId }).select('_id')
+        referrer = await CustomerModel.findOne({ customer_id: referralId }).select('_id, isAmbassador')
 
         let referrerNotFoundMsg = 'referrer with id ' + referralId + ' was not found for customer, ' + email
         checkNotFound(referrer, 'Referrer', referrerNotFoundMsg)
@@ -62,10 +63,21 @@ class CustomerRouter {
       let customer = new CustomerModel({
         customer_id: this.idgen.simple(12),
         email: email,
-        referral_id: referralId
+        referral_id: referralId,
+        isAmbassador: req.body.isAmbassador
       })
 
       const newCustomer = await CustomerModel.create(customer)
+
+      if (isNotNull(referrer)) {
+        const joiningFees = 100
+        let payback = 0.3 * joiningFees
+        if (referrer.isAmbassador) {
+          payback += 0.1 * joiningFees
+        }
+
+        await CustomerModel.update({ _id: referrer._id }, { $inc: { payback } })
+      }
 
       res.json(newCustomer)
     } catch (err) {
