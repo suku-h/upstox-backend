@@ -174,6 +174,17 @@ class CustomerRouter {
     }
   }
 
+  async convertCustomerToAmbassador(req: Request, res: Response) {
+    try {
+      let customerId = req.body.customer_id
+
+      await CustomerModel.findOneAndUpdate({ customer_id: customerId }, { $set: { isAmbassador: true } }).select('_id, isAmbassador')
+      res.json(CommonResponse.getSuccess())
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
   routes() {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
@@ -181,6 +192,7 @@ class CustomerRouter {
     this.router.get('/children/all', (req, res) => this.fetchAllChildren(req, res))
     this.router.post('/ambassador', (req, res) => this.addAmbassador(req, res))
     this.router.get('/referral/count', (req, res) => this.fetchAllCustomersWithReferralCount(req, res))
+    this.router.put('/ambassador', (req, res) => this.convertCustomerToAmbassador(req, res))
   }
 }
 
