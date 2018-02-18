@@ -5,9 +5,12 @@ let CustomerSchema: Schema = new Schema({
   email: { type: String, required: true },
   referral_id: { type: String },
   payback: { type: Number, default: 0 },
-  isAmbassador: { type: Boolean, default: false },
-  joiningDate: { type: Date, default: new Date() },
-  lastUpdated: { type: Date }
-})
+  isAmbassador: { type: Boolean, default: false }
+}, {
+    timestamps: {
+      createdAt: 'joiningDate',
+      updatedAt: 'lastUpdated'
+    }
+  })
 
-export default model('Customer', CustomerSchema, 'customers')
+export default model('CustomerModel', CustomerSchema, 'customers')

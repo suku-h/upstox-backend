@@ -1,8 +1,15 @@
 import * as uid from 'uid-gen'
-import Customer from '../models/customer'
-import { checkBadRequest, checkNotFound } from '../utils/http'
-import { isNull } from '../utils/util'
+import Customer from '../pojos/customer'
+import CustomerModel from '../models/customer'
+import {
+  checkBadRequest,
+  checkNotFound,
+  checkValidEmail,
+  returnError
+  } from '../utils/http'
+import { isEmptyString, isNotNull, isNull } from '../utils/util'
 import { Request, Response, Router } from 'express'
+import { unauthorised } from '../utils/http'
 
 class CustomerRouter {
   public router: Router
@@ -17,49 +24,59 @@ class CustomerRouter {
 
   async getCustomer(req: Request, res: Response) {
     try {
-      let customer_id = req.body.customer_id
-      console.log('customer_id', customer_id)
+      let customerId = req.query.customer_id
 
-      checkBadRequest(customer_id, 'blank customer id')
+      checkBadRequest(customerId, 'blank customer id')
 
-      let customer = await Customer.findOne(customer_id)
+      let customer = await CustomerModel.findOne({ customer_id: customerId })
 
-      let logMessage = 'customer not found for id ' + customer_id
+      let logMessage = 'customer not found for id ' + customerId
       checkNotFound(customer, 'Customer', logMessage)
 
       res.json(customer)
     } catch (err) {
-      console.log('err', err)
-      res.status(500).json({ error: err.toString() });
+      returnError(err, res)
     }
   }
 
-  createCustomer(req: Request, res: Response): void {
-    let input = req.body
+  async createCustomer(req: Request, res: Response) {
+    try {
+      let email = req.body.email
+      let referralId = req.body.referral_id
 
+      checkValidEmail(email)
 
-    let customer = new Customer({
-      customer_id: this.idgen.simple(12),
-      email: input.email
-    });
+      let existingCustomer = await CustomerModel.findOne({ email }).select('_id')
+      if (isNotNull(existingCustomer)) {
+        console.log('customer already exists', email)
+        throw unauthorised('Customer already exists')
+      }
 
-    if (undefined !== input.referral_id && null !== input.referral_id) {
-      let referralId = input.referral_id;
-    } else {
-      Customer.create(customer, (err, doc) => {
-        if (err) {
-          throw err;
-        } else {
-          console.log('doc', doc);
-          res.json(doc);
-        }
-      });
+      if (!isEmptyString(referralId)) {
+        const referrer = await CustomerModel.findOne({ customer_id: referralId }).select('_id')
+
+        let referrerNotFoundMsg = 'referrer with id ' + referralId + ' was not found for customer, ' + email
+        checkNotFound(referrer, 'Referrer', referrerNotFoundMsg)
+      }
+
+      let customer = new CustomerModel({
+        customer_id: this.idgen.simple(12),
+        email: email,
+        referral_id: referralId
+      })
+
+      const newCustomer = await CustomerModel.create(customer)
+
+      res.json(newCustomer)
+    } catch (err) {
+      returnError(err, res)
     }
   }
 
 
   routes() {
-    this.router.get('/', this.getCustomer)
+    this.router.get('/', (req, res) => this.getCustomer(req, res))
+    this.router.post('/', (req, res) => this.createCustomer(req, res))
   }
 }
 
