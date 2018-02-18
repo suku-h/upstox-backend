@@ -1,3 +1,4 @@
+import ICustomer from '../interfaces/customer'
 import { model, Schema } from 'mongoose'
 
 let CustomerSchema: Schema = new Schema({
@@ -13,4 +14,4 @@ let CustomerSchema: Schema = new Schema({
     }
   })
 
-export default model('CustomerModel', CustomerSchema, 'customers')
+export default model<ICustomer>('CustomerModel', CustomerSchema, 'customers')
