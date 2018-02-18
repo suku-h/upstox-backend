@@ -1,3 +1,4 @@
+import * as _ from 'lodash'
 import * as uid from 'uid-gen'
 import CommonResponse from '../pojos/commonresponse'
 import Customer from '../pojos/customer'
@@ -151,12 +152,35 @@ class CustomerRouter {
     }
   }
 
+  async fetchAllCustomersWithReferralCount(req: Request, res: Response) {
+    try {
+      const customers = await CustomerModel.find()
+
+      let referralCountMap = new Map<string, number>()
+      for (let customer of customers) {
+        referralCountMap.set(customer.customer_id, 0)
+        if (isNotNull(customer.referral_id)) {
+          referralCountMap.set(customer.referral_id, referralCountMap.get(customer.referral_id) + 1)
+        }
+      }
+
+      let referralCountArray = _.entries(referralCountMap).map(([customerId, referralCount]) => ({ customerId, referralCount }))
+
+      referralCountArray = _.sortBy(referralCountArray, 'referralCount').reverse()
+
+      res.json(referralCountArray)
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
   routes() {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
     this.router.put('/referral', (req, res) => this.addReferral(req, res))
     this.router.get('/children/all', (req, res) => this.fetchAllChildren(req, res))
     this.router.post('/ambassador', (req, res) => this.addAmbassador(req, res))
+    this.router.get('/referral/count', (req, res) => this.fetchAllCustomersWithReferralCount(req, res))
   }
 }
 
