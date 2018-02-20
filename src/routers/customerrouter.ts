@@ -72,7 +72,7 @@ class CustomerRouter {
       const newCustomer = await CustomerModel.create(customer)
 
       if (isNotNull(referrer)) {
-        const payback = Customer.getPayback(referrer)
+        const payback = Customer.getPayback(customer, referrer)
         await CustomerModel.update({ _id: referrer._id }, { $inc: { payback } })
       }
 
@@ -104,7 +104,7 @@ class CustomerRouter {
 
       await CustomerModel.update({ _id: customer._id }, { $set: { referral_id: referralId } })
 
-      let payback = Customer.getPayback(referrer)
+      let payback = Customer.getPayback(customer, referrer)
       await CustomerModel.update({ _id: referrer._id }, { $inc: { payback } })
 
       res.json(CommonResponse.getSuccess())
@@ -141,7 +141,8 @@ class CustomerRouter {
       let customer = new CustomerModel({
         customer_id: this.idgen.simple(12),
         email: email,
-        isAmbassador: true
+        isAmbassador: true,
+        ambassadorDate: new Date()
       })
 
       const ambassador = await CustomerModel.create(customer)
@@ -178,7 +179,18 @@ class CustomerRouter {
     try {
       let customerId = req.body.customer_id
 
-      await CustomerModel.findOneAndUpdate({ customer_id: customerId }, { $set: { isAmbassador: true } }).select('_id, isAmbassador')
+      let customer = await CustomerModel.findOne({ customer_id: customerId }).select('_id, isAmbassador')
+
+      let logMessage = 'Customer, ' + customerId + ', was not found'
+      checkNotFound(customer, 'Customer', logMessage)
+
+      if (isNotNull(customer.isAmbassador) && customer.isAmbassador === true) {
+        console.log('customer is already an ambassador', customerId)
+        throw unauthorised('customer is already an ambassador')
+      }
+
+      await CustomerModel.update({ _id: customer._id }, { $set: { isAmbassador: true, ambassadorDate: new Date() } })
+
       res.json(CommonResponse.getSuccess())
     } catch (err) {
       returnError(err, res)

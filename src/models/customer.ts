@@ -6,7 +6,8 @@ let CustomerSchema: Schema = new Schema({
   email: { type: String, required: true },
   referral_id: { type: String },
   payback: { type: Number, default: 0 },
-  isAmbassador: { type: Boolean, default: false }
+  isAmbassador: { type: Boolean, default: false },
+  ambassadorDate: { type: Date }
 }, {
     timestamps: {
       createdAt: 'joiningDate',

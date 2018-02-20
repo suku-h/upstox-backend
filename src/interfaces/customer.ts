@@ -6,6 +6,7 @@ export default interface ICustomer extends mongoose.Document {
   referral_id: string
   payback: number
   isAmbassador: Boolean
+  ambassadorDate: Date
   joiningDate: Date
   lastUpdated: Date
 }
