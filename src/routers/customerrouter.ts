@@ -4,14 +4,21 @@ import CommonResponse from '../pojos/commonresponse'
 import Customer from '../pojos/customer'
 import CustomerModel from '../models/customer'
 import {
+  badRequest,
   checkBadRequest,
   checkEmptyString,
   checkNotFound,
   checkValidEmail,
+  notFound,
   returnError,
   unauthorised
   } from '../utils/http'
-import { isEmptyString, isNotNull, isNull } from '../utils/util'
+import {
+  isEmptyString,
+  isNotNull,
+  isNull,
+  wrap
+  } from '../utils/util'
 import { Request, Response, Router } from 'express'
 
 class CustomerRouter {
@@ -197,6 +204,68 @@ class CustomerRouter {
     }
   }
 
+  async fetchAllAmbassadorChildren(req: Request, res: Response) {
+    try {
+      let ambassadorId = req.query.customer_id
+
+      let ambassador = await CustomerModel.findOne({ customer_id: ambassadorId }).select('isAmbassador, ambassadorDate')
+
+      let logMessage = 'Customer, ' + ambassadorId + ', was not found'
+      checkNotFound(ambassador, 'Customer', ambassadorId)
+
+      if (isNotNull(ambassador.isAmbassador) && ambassador.isAmbassador === false) {
+        console.log('Customer is not and ambassador', ambassadorId)
+        throw notFound('Ambassador was not found')
+      }
+
+      let children = await CustomerModel.find({ referral_id: ambassadorId, joiningDate: { $gte: ambassador.ambassadorDate } })
+      res.json(children)
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
+  async fetchChildrenAtNthLevel(req: Request, res: Response) {
+    try {
+      let ambassadorId = req.query.customer_id
+      let level = req.query.level
+
+      if (isNotNull(level) && level < 1 || level % 1 !== 0) {
+        console.log('invalid value for level', level)
+        throw badRequest('Invalid value for level')
+      }
+
+      let ambassador = await CustomerModel.findOne({ customer_id: ambassadorId }).select('isAmbassador, ambassadorDate')
+
+      let logMessage = 'Customer, ' + ambassadorId + ', was not found'
+      checkNotFound(ambassador, 'Customer', ambassadorId)
+
+      if (isNotNull(ambassador.isAmbassador) && ambassador.isAmbassador === false) {
+        console.log('Customer is not and ambassador', ambassadorId)
+        throw notFound('Ambassador was not found')
+      }
+
+      let childrenNLevel: Customer[] = []
+      let children = await CustomerModel.find({ referral_id: ambassadorId, joiningDate: { $gte: ambassador.ambassadorDate } })
+      childrenNLevel = childrenNLevel.concat(children)
+
+      let i = 1
+      while (i < level && children.length > 0) {
+        let referrerIds = _.map(children, 'customer_id')
+
+        children = await CustomerModel.find({ referral_id: { $in: referrerIds } })
+
+        if (children.length > 0) {
+          childrenNLevel = childrenNLevel.concat(children)
+        }
+        i++
+      }
+      res.json(childrenNLevel)
+    } catch (err) {
+      returnError(err, res)
+    }
+  }
+
   routes() {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
@@ -205,6 +274,8 @@ class CustomerRouter {
     this.router.post('/ambassador', (req, res) => this.addAmbassador(req, res))
     this.router.get('/referral/count', (req, res) => this.fetchAllCustomersWithReferralCount(req, res))
     this.router.put('/ambassador', (req, res) => this.convertCustomerToAmbassador(req, res))
+    this.router.get('/ambassador/children', (req, res) => this.fetchAllAmbassadorChildren(req, res))
+    this.router.get('/ambassador/children/level', (req, res) => this.fetchChildrenAtNthLevel(req, res))
   }
 }
 
@@ -213,3 +284,4 @@ customerRoutes.routes()
 const customerRouter = customerRoutes.router
 
 export default customerRouter
+
