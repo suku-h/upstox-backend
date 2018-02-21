@@ -15,8 +15,8 @@ class Server {
 
   constructor() {
     this.app = express()
-    this.config();
-    this.routes();
+    this.config()
+    this.routes()
   }
 
   // we set up the project configurations

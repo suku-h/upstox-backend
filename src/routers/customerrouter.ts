@@ -270,7 +270,7 @@ class CustomerRouter {
     this.router.get('/', (req, res) => this.getCustomerById(req, res))
     this.router.post('/', (req, res) => this.addCustomer(req, res))
     this.router.put('/referral', (req, res) => this.addReferral(req, res))
-    this.router.get('/children/all', (req, res) => this.fetchAllChildren(req, res))
+    this.router.get('/children', (req, res) => this.fetchAllChildren(req, res))
     this.router.post('/ambassador', (req, res) => this.addAmbassador(req, res))
     this.router.get('/referral/count', (req, res) => this.fetchAllCustomersWithReferralCount(req, res))
     this.router.put('/ambassador', (req, res) => this.convertCustomerToAmbassador(req, res))
