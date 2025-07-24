@@ -7,12 +7,12 @@
   "license": "MIT",
   "dependencies": {
     "body-parser": "^1.18.2",
-    "compression": "^1.7.1",
+    "compression": "^1.8.1",
     "cors": "^2.8.4",
     "express": "^4.16.2",
     "helmet": "^3.11.0",
     "mongoose": "^5.0.6",
-    "morgan": "^1.9.0",
+    "morgan": "^1.10.1",
     "uid-gen": "^1.1.1"
   },
   "devDependencies": {
